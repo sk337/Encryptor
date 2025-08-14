@@ -1,2 +1,4 @@
-**/data.*
-**/data/**
+data/
+**/*.tar
+**/*.tar.gz
+**/*.tar.gz.enc
