@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+OUT_DIR="data"
+OUT_FILE="$OUT_DIR.tar"
+COMPRESSED_OUT_FILE="$OUT_FILE.gz"
+ENC_FILE="$COMPRESSED_OUT_FILE.enc"
+
+if [[ -f "$OUT_FILE" ]]; then
+    echo "Error: '$OUT_FILE' already exists. File is already encrypted."
+    exit 1
+fi
+
+tar -C "$OUT_DIR" -cf "$OUT_FILE" .
+
+find "$OUT_DIR" -type f -print0 | xargs -0 -P "$(nproc)" -n 1 shred -z -n 5 -u
+rm -rf "$OUT_DIR"
+
+gzip "$OUT_FILE"
+
+while true; do
+    echo -n "Enter desired password: "
+    read -s PASSWORD
+    echo
+    
+    echo -n "Confirm password: "
+    read -s PASSWORD_CONFIRM
+    echo
+    
+    if [[ "$PASSWORD" == "$PASSWORD_CONFIRM" ]]; then
+        echo "Passwords match. Proceeding with encryption..."
+        break
+    else
+        echo "Error: Passwords do not match. Please try again."
+    fi
+done
+
+openssl enc -aes-256-cbc -pbkdf2 -in $COMPRESSED_OUT_FILE -out $ENC_FILE -pass pass:"$PASSWORD"
+
+shred -u -n 5 -z $COMPRESSED_OUT_FILE
